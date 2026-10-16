@@ -84,6 +84,8 @@ DEFAULTS = {
     # training of the correction problems in parallel processes
     "parallelize": False,
     "n_workers": None,  # None: number of cpus
+    # threads per process with parallelize (TensorFlow and numpy/scipy), None: cpus // n_workers
+    "threads_per_worker": None,
     # basis functions to train: None for all, except global boundary nodes if skip_boundary_nodes
     "indices": None,
     # with homogeneous Dirichlet conditions, the basis functions of global boundary nodes are
@@ -172,6 +174,13 @@ _CTX = {}
 
 
 def init_context(cfg, param_coeff, test_coeff, resultPath, loadPath):
+    if cfg["parallelize"] and cfg.get("threads_per_worker"):
+        # limit the threads of this worker process (before tensorflow runs any operation)
+        try:
+            tf.config.threading.set_intra_op_parallelism_threads(cfg["threads_per_worker"])
+            tf.config.threading.set_inter_op_parallelism_threads(1)
+        except RuntimeError:
+            pass
     # several processes may share a GPU
     for gpu in tf.config.list_physical_devices("GPU"):
         try:
@@ -371,8 +380,17 @@ def run_training(cfg):
         print("Train param coeff: shape(", np.shape(
             param_coeff), ")\n", param_coeff)
         n_workers = cfg["n_workers"] or multiprocessing.cpu_count()
+        # threads per worker: the worker processes inherit these variables before they import
+        # numpy/scipy (BLAS threads) and tensorflow, which would otherwise use all cpus each
+        threads = cfg["threads_per_worker"] or max(1, multiprocessing.cpu_count() // n_workers)
+        for var in ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+                    "TF_NUM_INTRAOP_THREADS"]:
+            os.environ[var] = str(threads)
+        os.environ["TF_NUM_INTEROP_THREADS"] = "1"
+        cfg = dict(cfg, threads_per_worker=threads)
         print("-> Start training for "+str(len(index_vec)) +
-              " correction problems with " + str(n_workers)+" processes")
+              " correction problems with " + str(n_workers)+" processes, " +
+              str(threads)+" threads each")
         # spawn instead of fork: forking a process with an initialized tensorflow is unsafe
         ctx = multiprocessing.get_context("spawn")
         with ctx.Pool(n_workers, initializer=init_context,
