@@ -12,8 +12,6 @@ interpolation constraint of the corrections is enforced exactly by a fixed proje
 output. Once trained, the networks provide the LOD basis for any parameter by a forward pass, which
 is used to solve time-dependent problems with changing coefficients.
 
-Author of the code: Mehdi Elasmi (`util.py` and `LOD.py`: Mehdi Elasmi and Felix Krumbiegel).
-
 ## Installation
 
 Python 3.11 in a virtual environment:
