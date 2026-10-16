@@ -125,7 +125,7 @@ class FE_Nodal(Geo.GEO):
     @property
     def n_par(self):
         # number of parameters of the coefficient (vector valued parameters: n_par > 1)
-        return getattr(self.PDEcoeff, "n_par", 1)
+        return self.PDEcoeff.n_par
 
     def parameterMatrix(self, params):
         # coefficient parameters as a matrix with one row per coefficient
@@ -133,12 +133,9 @@ class FE_Nodal(Geo.GEO):
         return np.reshape(params, (np.shape(params)[0], -1))
 
     def localParameters(self, index):
-        """Indices of the parameters on which the correction problem index depends: all for a
-        scalar parameter; for coefficients with relevant_parameters (e.g. one parameter per
-        region), only the parameters of the regions intersecting the patch."""
-        if hasattr(self.PDEcoeff, "relevant_parameters"):
-            return self.PDEcoeff.relevant_parameters(self.Mids[self.PatchF[index], :])
-        return np.arange(self.n_par)
+        """Indices of the parameters on which the correction problem index depends (all, unless
+        the coefficient restricts them by relevant_parameters, e.g. one parameter per region)."""
+        return self.PDEcoeff.relevant_parameters(self.Mids[self.PatchF[index], :])
 
     def stiffness(self, A):
         # fine stiffness matrix for the coefficient A (values at the fine elements)

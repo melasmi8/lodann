@@ -14,7 +14,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 import training
 
 config = training.make_config(
-    coeff_fun="front",
+    coeff_fun="examples.damage_front.coefficient:DamageFront",
     coeff_kwargs={"n_eps": 36, "a_min": 0.3, "a_max": 1.0, "kappa": 0.1, "frac_max": 0.7,
                   "delta": 0.015, "corr": 0.1, "seed": 73},
     domain=[[0, 1], [0, 1]],

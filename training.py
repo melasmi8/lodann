@@ -14,13 +14,14 @@ import tensorflow as tf
 import Geo
 import DiscreteSetting
 import LODANN
-import PDEcoeff_functions
+import coefficients
 import util
 import figures
 
 DEFAULTS = {
-    # coefficient: class PDEcoeff_<coeff_fun> in PDEcoeff_functions with the arguments coeff_kwargs
-    "coeff_fun": "front",
+    # coefficient: class "package.module:Class" (subclass of coefficients.Coefficient, defined in
+    # the example folder) with the arguments coeff_kwargs
+    "coeff_fun": "examples.damage_front.coefficient:DamageFront",
     "coeff_kwargs": {},
     # domain, localization, and discretization
     "domain": [[0, 1], [0, 1]],
@@ -160,8 +161,7 @@ def build_setting(cfg, param_coeff, test_coeff):
     domain = np.array(cfg["domain"])
     N_coarse = np.array(cfg["N_coarse"])
     N_fine_per_element = np.array(cfg["N_fine_per_element"])
-    PDEcoeff = PDEcoeff_functions.make_PDEcoeff(
-        cfg["coeff_fun"], domain, **cfg["coeff_kwargs"])
+    PDEcoeff = coefficients.make_coefficient(cfg)
     Mesh = Geo.GEO(domain, N_coarse, N_fine_per_element, cfg["ell"],
                    np_dtype=np.float32, elementwise=cfg["elementwise"])
     FE = DiscreteSetting.FE_Nodal(
@@ -338,8 +338,7 @@ def run_training(cfg):
         (cfg["epsilon_max"] - cfg["epsilon_min"])*np.random.random(cfg["N_test"])
     # training parameters: equidistant for a scalar parameter, Latin hypercube samples in
     # [epsilon_min, epsilon_max]^n_par for vector valued parameters
-    n_par = getattr(PDEcoeff_functions.make_PDEcoeff(
-        cfg["coeff_fun"], np.array(cfg["domain"]), **cfg["coeff_kwargs"]), "n_par", 1)
+    n_par = coefficients.make_coefficient(cfg).n_par
     lo, hi = cfg["epsilon_min"], cfg["epsilon_max"]
     if n_par > 1:
         param_coeff = (lo + (hi-lo)*qmc.LatinHypercube(d=n_par, seed=cfg["param_seed"]).random(
@@ -432,7 +431,7 @@ def run_training(cfg):
         cols = math.ceil(np.sqrt(np.shape(plot_coeff)[0]))
         rows = math.ceil(np.shape(plot_coeff)[0]/cols)
         fig = plt.figure(figsize=(4*cols, 3*rows))
-        PDEcoeff_functions.plot_coeff(
+        coefficients.plot_coeff(
             PDEcoeff, FE.Mids, plot_coeff, cols, fig)
         plt.savefig(resultPath+"TrainCoeff/train_coefficients")
         plt.close()
