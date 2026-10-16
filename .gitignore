@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+
+# diagnostic outputs of the training and evaluation that are not needed for the paper results
+# (the trained models, training logs, configs, figures and summaries are kept)
+examples/*/results/*/TrainCoeff/
+examples/*/results/*/TestCoeff/
+examples/*/results/*/EvalCoeff/
+examples/*/results/*/correction_*.png
+examples/*/results/*/coefficient_*.png
+examples/*/results/*/solution_*.png
+examples/*/results/*/sa_weights*.txt
+examples/*/results_size/*/correction_*.png
+examples/*/results_size/*/coefficient_*.png
+examples/*/results_size/*/TrainCoeff/
+examples/*/results_size/*/TestCoeff/
