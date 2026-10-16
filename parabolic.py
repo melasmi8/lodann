@@ -4,7 +4,7 @@ import timeit
 import numpy as np
 import matplotlib.pyplot as plt
 import evaluate_model
-import PDEcoeff_functions
+import coefficients
 import LOD
 import solvers
 import util
@@ -66,7 +66,7 @@ def run_case(loadPath, evalCoeff, T, rhs, u0, mass_fun=None, label="train", targ
         if plotCoeff:
             # plot the coefficient at the element midpoints where it is used
             fig, ax = plt.subplots()
-            PDEcoeff_functions.plotandSaveCoeff(
+            coefficients.plotandSaveCoeff(
                 loadPath, PDEcoeff, FE.Mids, [coeff], i, ax, fig, label)
         A = PDEcoeff(FE.Mids, [coeff]).flatten()
         A_stiff[:, i] = A

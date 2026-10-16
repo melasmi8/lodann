@@ -9,7 +9,7 @@
 # local state of charge p_r of its region (12 AM layers x 4 segments = 48 regions/parameters):
 # lambda = lambda_base 1.5^(2 p_r - 1), i.e., by a factor in [1/1.5, 1.5] (the thermal conductivity
 # of LiCoO2 changes by a factor ~1.5 with lithiation). Collectors: 236.3 (Al), 398.71 (Cu) W/(m K).
-# Heat capacities in battery_physics.py. Each element network only gets the parameters of the
+# Heat capacities in solve_parabolic.py. Each element network only gets the parameters of the
 # regions intersecting its patch.
 # Evaluation (solve_parabolic.py): heat source 2e5 W/m^3 in the AM, homogeneous Dirichlet data,
 # 20 min of charging (T_final = 1200 s, 24 time steps), local states of charge rising from
@@ -24,9 +24,9 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 import training
 
 config = training.make_config(
-    coeff_fun="battery_multi",
+    coeff_fun="examples.battery_multi.coefficient:BatteryCell",
     coeff_kwargs={"ccc": 236.3, "acc": 398.71, "am_min": 1., "am_max": 5., "n_eps": 132,
-                  "n_seg": 4, "mode": "magnitude", "factor": 1.5, "seed": 73,
+                  "n_seg": 4, "factor": 1.5, "seed": 73,
                   "stack": {"n_rep": 6, "t_coll": 1, "t_am": 10, "closing": False}},
     domain=[[0, 1], [0, 1]],  # computational domain, the window of size problem_kwargs["length"]
     N_coarse=[12, 12],  # H = 1/12
@@ -59,7 +59,7 @@ config = training.make_config(
     parallelize=False,
     # evaluation: physical units (window size [m], heat source in the AM [W/m^3]), charging scenario
     T_final=1200.,
-    problem_kwargs={"length": 2.178e-3, "heat_source": 2e5, "scenario": "charge"},
+    problem_kwargs={"length": 2.178e-3, "heat_source": 2e5},
     result_root=str(Path(__file__).parent / "results")+"/",
 )
 

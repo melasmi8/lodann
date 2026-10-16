@@ -11,7 +11,7 @@ import tensorflow as tf
 import timeit
 import json
 import Geo
-import PDEcoeff_functions
+import coefficients
 import DiscreteSetting
 import util
 
@@ -118,8 +118,7 @@ def evaluateModel(loadPath, evalCoeff="train_coeff", timings=None, batched=None,
                    ell, elementwise=elementwise)
 
     # coefficient function with the same settings as in training
-    PDEcoeff = PDEcoeff_functions.make_PDEcoeff(
-        coeff_fun, domain, **config["coeff_kwargs"])
+    PDEcoeff = coefficients.make_coefficient(dict(config, coeff_fun=coeff_fun))
     FE = DiscreteSetting.FE_Nodal(Mesh, PDEcoeff, train_coeff, eval_coeff)
     # projection onto the interpolation constraint (if used in training)
     exact_constraint = config.get("exact_constraint", False)

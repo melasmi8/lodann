@@ -14,13 +14,14 @@ import tensorflow as tf
 import Geo
 import DiscreteSetting
 import LODANN
-import PDEcoeff_functions
+import coefficients
 import util
 import figures
 
 DEFAULTS = {
-    # coefficient: class PDEcoeff_<coeff_fun> in PDEcoeff_functions with the arguments coeff_kwargs
-    "coeff_fun": "front",
+    # coefficient: class "package.module:Class" (subclass of coefficients.Coefficient, defined in
+    # the example folder) with the arguments coeff_kwargs
+    "coeff_fun": "examples.damage_front.coefficient:DamageFront",
     "coeff_kwargs": {},
     # domain, localization, and discretization
     "domain": [[0, 1], [0, 1]],
@@ -84,6 +85,8 @@ DEFAULTS = {
     # training of the correction problems in parallel processes
     "parallelize": False,
     "n_workers": None,  # None: number of cpus
+    # threads per process with parallelize (TensorFlow and numpy/scipy), None: cpus // n_workers
+    "threads_per_worker": None,
     # basis functions to train: None for all, except global boundary nodes if skip_boundary_nodes
     "indices": None,
     # with homogeneous Dirichlet conditions, the basis functions of global boundary nodes are
@@ -158,8 +161,7 @@ def build_setting(cfg, param_coeff, test_coeff):
     domain = np.array(cfg["domain"])
     N_coarse = np.array(cfg["N_coarse"])
     N_fine_per_element = np.array(cfg["N_fine_per_element"])
-    PDEcoeff = PDEcoeff_functions.make_PDEcoeff(
-        cfg["coeff_fun"], domain, **cfg["coeff_kwargs"])
+    PDEcoeff = coefficients.make_coefficient(cfg)
     Mesh = Geo.GEO(domain, N_coarse, N_fine_per_element, cfg["ell"],
                    np_dtype=np.float32, elementwise=cfg["elementwise"])
     FE = DiscreteSetting.FE_Nodal(
@@ -172,6 +174,13 @@ _CTX = {}
 
 
 def init_context(cfg, param_coeff, test_coeff, resultPath, loadPath):
+    if cfg["parallelize"] and cfg.get("threads_per_worker"):
+        # limit the threads of this worker process (before tensorflow runs any operation)
+        try:
+            tf.config.threading.set_intra_op_parallelism_threads(cfg["threads_per_worker"])
+            tf.config.threading.set_inter_op_parallelism_threads(1)
+        except RuntimeError:
+            pass
     # several processes may share a GPU
     for gpu in tf.config.list_physical_devices("GPU"):
         try:
@@ -329,8 +338,7 @@ def run_training(cfg):
         (cfg["epsilon_max"] - cfg["epsilon_min"])*np.random.random(cfg["N_test"])
     # training parameters: equidistant for a scalar parameter, Latin hypercube samples in
     # [epsilon_min, epsilon_max]^n_par for vector valued parameters
-    n_par = getattr(PDEcoeff_functions.make_PDEcoeff(
-        cfg["coeff_fun"], np.array(cfg["domain"]), **cfg["coeff_kwargs"]), "n_par", 1)
+    n_par = coefficients.make_coefficient(cfg).n_par
     lo, hi = cfg["epsilon_min"], cfg["epsilon_max"]
     if n_par > 1:
         param_coeff = (lo + (hi-lo)*qmc.LatinHypercube(d=n_par, seed=cfg["param_seed"]).random(
@@ -371,8 +379,17 @@ def run_training(cfg):
         print("Train param coeff: shape(", np.shape(
             param_coeff), ")\n", param_coeff)
         n_workers = cfg["n_workers"] or multiprocessing.cpu_count()
+        # threads per worker: the worker processes inherit these variables before they import
+        # numpy/scipy (BLAS threads) and tensorflow, which would otherwise use all cpus each
+        threads = cfg["threads_per_worker"] or max(1, multiprocessing.cpu_count() // n_workers)
+        for var in ["OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+                    "TF_NUM_INTRAOP_THREADS"]:
+            os.environ[var] = str(threads)
+        os.environ["TF_NUM_INTEROP_THREADS"] = "1"
+        cfg = dict(cfg, threads_per_worker=threads)
         print("-> Start training for "+str(len(index_vec)) +
-              " correction problems with " + str(n_workers)+" processes")
+              " correction problems with " + str(n_workers)+" processes, " +
+              str(threads)+" threads each")
         # spawn instead of fork: forking a process with an initialized tensorflow is unsafe
         ctx = multiprocessing.get_context("spawn")
         with ctx.Pool(n_workers, initializer=init_context,
@@ -414,7 +431,7 @@ def run_training(cfg):
         cols = math.ceil(np.sqrt(np.shape(plot_coeff)[0]))
         rows = math.ceil(np.shape(plot_coeff)[0]/cols)
         fig = plt.figure(figsize=(4*cols, 3*rows))
-        PDEcoeff_functions.plot_coeff(
+        coefficients.plot_coeff(
             PDEcoeff, FE.Mids, plot_coeff, cols, fig)
         plt.savefig(resultPath+"TrainCoeff/train_coefficients")
         plt.close()

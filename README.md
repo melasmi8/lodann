@@ -12,8 +12,6 @@ interpolation constraint of the corrections is enforced exactly by a fixed proje
 output. Once trained, the networks provide the LOD basis for any parameter by a forward pass, which
 is used to solve time-dependent problems with changing coefficients.
 
-Author of the code: Mehdi Elasmi (`util.py` and `LOD.py`: Mehdi Elasmi and Felix Krumbiegel).
-
 ## Installation
 
 Python 3.11 in a virtual environment:
@@ -44,10 +42,7 @@ bash run_paper_examples.sh evaluate
 ```
 
 `N_WORKERS=4 bash run_paper_examples.sh train` trains four networks in parallel processes, which
-share the GPU. Two further steps are available: `bash run_paper_examples.sh check` prints the accuracy
-of the classical LOD against fine FEM for the chosen meshes (no training), and
-`bash run_paper_examples.sh smoke` trains two networks per example for a few epochs (quick test of
-the installation, results in `/tmp/lodann_smoke`).
+share the GPU.
 
 The results are written to `examples/<example>/results/<case>/`: the trained networks
 (`correctedHatModel<K>.h5`, one per coarse element K), the training logs (`logs/`, TensorBoard), the
@@ -108,17 +103,23 @@ The training progress can be followed with TensorBoard: `tensorboard --logdir ex
 
 ## Creating a new example
 
-1. **Coefficient.** Add a class `PDEcoeff_<name>` to `PDEcoeff_functions.py` (see `PDEcoeff_front` for
-   one parameter and `PDEcoeff_battery_multi` for several parameters):
-   - `__init__(self, domain, **kwargs)`: the keyword arguments are set by `coeff_kwargs` in the configuration;
+1. **Coefficient.** Create the example folder `examples/<my_example>/` with an empty `__init__.py` and a
+   file `coefficient.py` with a subclass of `coefficients.Coefficient` (see
+   `examples/damage_front/coefficient.py` for one parameter and `examples/battery_multi/coefficient.py`
+   for several parameters):
+   - `__init__(self, domain, **kwargs)`: calls `super().__init__(domain)`; the keyword arguments are set
+     by `coeff_kwargs` in the configuration;
    - `__call__(self, x, p)`: values of the coefficient at the points `x` (array of shape `(N, d)`, the
      fine element midpoints) for each parameter in the list `p`, stacked as a column vector of length
      `N len(p)`;
    - for a vector of parameters: the attribute `n_par` (number of parameters) and, optionally, the
      method `relevant_parameters(x)` that returns the indices of the parameters on which the
      coefficient at the points `x` depends. Each network then only receives these parameters.
-2. **Example folder.** Create `examples/<my_example>/` with an empty `__init__.py`, a `results/` folder and
-   - `train_model.py`: the configuration, `config = training.make_config(coeff_fun="<name>", coeff_kwargs={...}, ...)`,
+
+   `coefficients.RandomField` provides rough random fields (piecewise constant, log-uniform values).
+2. **Configuration and problem.** Add a `results/` folder and
+   - `train_model.py`: the configuration,
+     `config = training.make_config(coeff_fun="examples.<my_example>.coefficient:<MyCoefficient>", coeff_kwargs={...}, ...)`,
      with `result_root` set to the `results/` folder of the example and
      `training.run_training(training.config_from_argv(config))` as main program (copy
      `examples/damage_front/train_model.py`);
@@ -139,9 +140,11 @@ The training progress can be followed with TensorBoard: `tensorboard --logdir ex
 | `LODANN.py` | network of one coarse element: localization, normalization, exact interpolation constraint, energy loss, Adam and L-BFGS |
 | `DiscreteSetting.py`, `Geo.py` | fine and coarse meshes, patches, local system matrices and interpolation |
 | `LOD.py`, `util.py` | classical LOD correctors, finite element assembly and utilities |
-| `PDEcoeff_functions.py`, `battery_physics.py` | coefficients of the examples, heat source and heat capacity of the battery cell |
+| `coefficients.py` | interface of the coefficients, rough random fields, loading of the coefficient of an example |
 | `solvers.py`, `parabolic.py`, `evaluate_model.py` | backward Euler solvers (fine FEM, coarse FEM, LOD), evaluation of the trained networks |
 | `make_figures.py`, `figures.py`, `baselines.py` | figures and tables of the paper, classical Deep Ritz baseline |
 | `lod_accuracy.py` | accuracy of the classical LOD for a mesh (before training) |
 | `run_paper_examples.sh` | training and evaluation of the examples of the paper |
+| `examples/<example>/coefficient.py` | coefficient of the example |
+| `examples/<example>/train_model.py`, `solve_parabolic.py` | configuration of the example, time-dependent problem and evaluation cases |
 | `examples/damage_front/network_size.py` | network size study of Example 1 |
