@@ -9,32 +9,16 @@
 #                                         # network size study of Example 1)
 #   bash run_paper_examples.sh evaluate   # solve the time-dependent problems, write all figures
 #                                         # and tables (results/<case>/figures/ of each example)
-# Further steps:
-#   bash run_paper_examples.sh check      # accuracy of the classical LOD against fine FEM for the
-#                                         # chosen meshes (no training, CPU)
-#   bash run_paper_examples.sh smoke      # short training of two networks per example in
-#                                         # /tmp/lodann_smoke (quick test of the installation)
-# Environment: N_WORKERS=<n> trains n networks in parallel processes (they share the GPU), e.g.
+# Environment: N_WORKERS=<n> trains n networks in parallel processes, e.g.
 #   N_WORKERS=4 bash run_paper_examples.sh train
 set -e
 cd "$(dirname "$0")"
-STEP=${1:?"usage: bash run_paper_examples.sh train|evaluate|check|smoke"}
+STEP=${1:?"usage: bash run_paper_examples.sh train|evaluate"}
 N_WORKERS=${N_WORKERS:-1}
 PAR=""
 if [ "$N_WORKERS" -gt 1 ]; then PAR="parallelize=True n_workers=$N_WORKERS"; fi
 
 case "$STEP" in
-check)
-    python lod_accuracy.py damage_front
-    python lod_accuracy.py battery_multi
-    ;;
-smoke)
-    for ex in damage_front battery_multi; do
-        echo "=== smoke test $ex"
-        python examples/$ex/train_model.py epochs=201 finetune_epochs=10 indices=[0,52] \
-            assemble_GModel=False result_root=/tmp/lodann_smoke/$ex/
-    done
-    ;;
 train)
     echo "=== Example 1: training"
     python examples/damage_front/train_model.py $PAR
@@ -52,6 +36,6 @@ evaluate)
     python examples/damage_front/network_size.py
     ;;
 *)
-    echo "unknown step: $STEP (train, evaluate, check, smoke)"; exit 1
+    echo "unknown step: $STEP (train, evaluate)"; exit 1
     ;;
 esac
