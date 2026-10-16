@@ -254,16 +254,17 @@ class LODANN(DiscreteSetting.FE_Nodal):
                 self.test_summary_writer = tf.summary.create_file_writer(
                     test_log_dir)
 
-        if len(model) > 0:
-            self.model = model[0]
+        self.model = model[0] if len(model) > 0 else self.initialize_model(self.layers)
+        if len(model) > 0 and model[1] is not None:
             self.sa_weight_tf = tf.Variable(np.reshape(
                 model[1], [N_constr*self.N_coeff, -1]), dtype=DTYPE, trainable=True)
+        else:
+            self.sa_weight_tf = tf.Variable(tf.random.uniform(
+                [N_constr*self.N_coeff, N_out], dtype=DTYPE), trainable=True)
+        if len(model) > 0 and model[2] is not None:
             self.sa_weightData_tf = tf.Variable(np.reshape(
                 model[2], [N_v_pp_fine*self.N_coeff, -1]), dtype=DTYPE, trainable=True)
         else:
-            self.model = self.initialize_model(self.layers)
-            self.sa_weight_tf = tf.Variable(tf.random.uniform(
-                [N_constr*self.N_coeff, N_out], dtype=DTYPE), trainable=True)
             self.sa_weightData_tf = tf.Variable(tf.random.uniform(
                 [N_v_pp_fine*self.N_coeff, N_out], dtype=DTYPE), trainable=True)
 

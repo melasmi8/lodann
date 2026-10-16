@@ -1,5 +1,5 @@
 # Author: Mehdi Elasmi
-# Accuracy of LOD-ANN against the network size: networks of several widths and depths are trained for
+# Accuracy of LODANN against the network size: networks of several widths and depths are trained for
 # a few representative elements (same training as train_model.py), and the relative errors of their
 # corrections against the exact LOD correctors of eq. (7) are measured in the energy norm on the test
 # parameters.

@@ -1,0 +1,34 @@
+\documentclass[border=3pt]{standalone}
+\usepackage{amsmath}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{colormap={seq}{rgb255=(205,226,251) rgb255=(183,211,246) rgb255=(158,197,244) rgb255=(134,182,239) rgb255=(109,167,236) rgb255=(85,152,231) rgb255=(57,135,229) rgb255=(42,120,214) rgb255=(37,106,191) rgb255=(28,92,171) rgb255=(24,79,149) rgb255=(16,66,129) rgb255=(13,54,107)}}
+\pgfplotsset{colormap={div}{rgb255=(13,54,107) rgb255=(28,92,171) rgb255=(57,135,229) rgb255=(134,182,239) rgb255=(205,226,251) rgb255=(240,239,236) rgb255=(246,207,206) rgb255=(238,148,147) rgb255=(227,73,72) rgb255=(180,47,46) rgb255=(125,26,26)}}
+\definecolor{cfineFEM}{HTML}{0B0B0B}
+\definecolor{cLODANN}{HTML}{2A78D6}
+\definecolor{cLOD}{HTML}{EB6834}
+\definecolor{ccoarseFEM}{HTML}{1BAF7A}
+\definecolor{cfrozenLOD}{HTML}{EDA100}
+\definecolor{cDeepRitz}{HTML}{E87BA4}
+\definecolor{cnodalbasis}{HTML}{52514E}
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1, horizontal sep=1.6cm, vertical sep=1.6cm}, width=5cm, height=3.75cm, scale only axis, enlargelimits=false, axis on top, tick label style={font=\scriptsize}, label style={font=\small}, title style={font=\small}]
+\nextgroupplot[title={train set}, xlabel={$t$}, ylabel={relative error vs.\ fine FEM [\%]}, ymode=log, xmode=normal, grid=major, grid style={line width=0.2pt, draw=black!10}, every axis plot/.append style={line join=round}, enlarge x limits=false, enlarge y limits=0.08, ytick={1,2,3,5,10}, yticklabels={1,2,3,5,10}, legend pos=north east, legend style={font=\scriptsize, draw=none, fill=white, fill opacity=0.85, text opacity=1}, legend cell align=left]
+\addplot[color=ccoarseFEM, dotted, line width=1pt, no markers] table[x=x, y=y]{errors_over_time_line0_0.dat};
+\addlegendentry{coarse FEM}
+\addplot[color=cfrozenLOD, dashdotted, line width=1pt, no markers] table[x=x, y=y]{errors_over_time_line0_1.dat};
+\addlegendentry{frozen LOD}
+\addplot[color=cLODANN, solid, line width=1pt, no markers] table[x=x, y=y]{errors_over_time_line0_2.dat};
+\addlegendentry{LODANN}
+\addplot[color=cLOD, dashed, line width=1pt, no markers] table[x=x, y=y]{errors_over_time_line0_3.dat};
+\addlegendentry{LOD}
+\nextgroupplot[title={test set}, xlabel={$t$}, ylabel={relative error vs.\ fine FEM [\%]}, ymode=log, xmode=normal, grid=major, grid style={line width=0.2pt, draw=black!10}, every axis plot/.append style={line join=round}, enlarge x limits=false, enlarge y limits=0.08, ytick={1,2,3,5,10}, yticklabels={1,2,3,5,10}]
+\addplot[color=ccoarseFEM, dotted, line width=1pt, no markers] table[x=x, y=y]{errors_over_time_line1_0.dat};
+\addplot[color=cfrozenLOD, dashdotted, line width=1pt, no markers] table[x=x, y=y]{errors_over_time_line1_1.dat};
+\addplot[color=cLODANN, solid, line width=1pt, no markers] table[x=x, y=y]{errors_over_time_line1_2.dat};
+\addplot[color=cLOD, dashed, line width=1pt, no markers] table[x=x, y=y]{errors_over_time_line1_3.dat};
+\end{groupplot}
+\end{tikzpicture}
+\end{document}

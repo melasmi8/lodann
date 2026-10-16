@@ -56,11 +56,20 @@ class RandomField:
         return np.exp(self.log_fields[k, self.cells(x)])
 
 
+# names of the coefficients in configurations of earlier versions of the code
+LEGACY_NAMES = {"front": "examples.damage_front.coefficient:DamageFront",
+                "battery_multi": "examples.battery_multi.coefficient:BatteryCell"}
+
+
 def make_coefficient(cfg):
     """Coefficient of a configuration: the class cfg["coeff_fun"] ("package.module:Class") with
     the keyword arguments cfg["coeff_kwargs"]."""
-    module, name = cfg["coeff_fun"].split(":")
-    return getattr(importlib.import_module(module), name)(cfg["domain"], **cfg["coeff_kwargs"])
+    kwargs = dict(cfg["coeff_kwargs"])
+    coeff_fun = LEGACY_NAMES.get(cfg["coeff_fun"], cfg["coeff_fun"])
+    if cfg["coeff_fun"] == "battery_multi":
+        assert kwargs.pop("mode", "magnitude") == "magnitude", "only the mode magnitude is supported"
+    module, name = coeff_fun.split(":")
+    return getattr(importlib.import_module(module), name)(cfg["domain"], **kwargs)
 
 
 def plot_coeff(fun, x, eps, cols, fig):

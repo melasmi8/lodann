@@ -1,0 +1,28 @@
+\documentclass[border=3pt]{standalone}
+\usepackage{amsmath}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{colormap={seq}{rgb255=(205,226,251) rgb255=(183,211,246) rgb255=(158,197,244) rgb255=(134,182,239) rgb255=(109,167,236) rgb255=(85,152,231) rgb255=(57,135,229) rgb255=(42,120,214) rgb255=(37,106,191) rgb255=(28,92,171) rgb255=(24,79,149) rgb255=(16,66,129) rgb255=(13,54,107)}}
+\pgfplotsset{colormap={div}{rgb255=(13,54,107) rgb255=(28,92,171) rgb255=(57,135,229) rgb255=(134,182,239) rgb255=(205,226,251) rgb255=(240,239,236) rgb255=(246,207,206) rgb255=(238,148,147) rgb255=(227,73,72) rgb255=(180,47,46) rgb255=(125,26,26)}}
+\definecolor{cfineFEM}{HTML}{0B0B0B}
+\definecolor{cLODANN}{HTML}{2A78D6}
+\definecolor{cLOD}{HTML}{EB6834}
+\definecolor{ccoarseFEM}{HTML}{1BAF7A}
+\definecolor{cfrozenLOD}{HTML}{EDA100}
+\definecolor{cDeepRitz}{HTML}{E87BA4}
+\definecolor{cnodalbasis}{HTML}{52514E}
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=4 by 1, horizontal sep=2.2cm, vertical sep=1.6cm}, width=4.2cm, height=4.2cm, scale only axis, enlargelimits=false, axis on top, tick label style={font=\scriptsize}, label style={font=\small}, title style={font=\small}]
+\nextgroupplot[xmin=0, xmax=1, ymin=0, ymax=1, title={train coefficient 0}, colormap name=seq, point meta min=0.217048, point meta max=0.998644, xlabel={$x$}, ylabel={$y$}, colorbar, colorbar style={width=0.18cm, tick label style={font=\scriptsize}, title={$a$}, title style={font=\small}, scaled y ticks=false, yticklabel style={/pgf/number format/fixed, /pgf/number format/precision=3}}]
+\addplot graphics[xmin=0, xmax=1, ymin=0, ymax=1] {coefficients_field0.png};
+\nextgroupplot[xmin=0, xmax=1, ymin=0, ymax=1, title={train coefficient 20}, colormap name=seq, point meta min=-1.52238, point meta max=-0.00130132, xlabel={$x$}, ylabel={}, colorbar, colorbar style={width=0.18cm, tick label style={font=\scriptsize}, title={$a$}, title style={font=\small}, scaled y ticks=false, yticklabel style={/pgf/number format/fixed, /pgf/number format/precision=3}, ytick={-1,0}, yticklabels={0.1,1}}]
+\addplot graphics[xmin=0, xmax=1, ymin=0, ymax=1] {coefficients_field1.png};
+\nextgroupplot[xmin=0, xmax=1, ymin=0, ymax=1, title={train coefficient 39}, colormap name=seq, point meta min=-1.52245, point meta max=-0.00288044, xlabel={$x$}, ylabel={}, colorbar, colorbar style={width=0.18cm, tick label style={font=\scriptsize}, title={$a$}, title style={font=\small}, scaled y ticks=false, yticklabel style={/pgf/number format/fixed, /pgf/number format/precision=3}, ytick={-1,0}, yticklabels={0.1,1}}]
+\addplot graphics[xmin=0, xmax=1, ymin=0, ymax=1] {coefficients_field2.png};
+\nextgroupplot[xmin=0, xmax=1, ymin=0, ymax=1, title={test coefficient 20}, colormap name=seq, point meta min=-1.52238, point meta max=-0.00133607, xlabel={$x$}, ylabel={}, colorbar, colorbar style={width=0.18cm, tick label style={font=\scriptsize}, title={$a$}, title style={font=\small}, scaled y ticks=false, yticklabel style={/pgf/number format/fixed, /pgf/number format/precision=3}, ytick={-1,0}, yticklabels={0.1,1}}]
+\addplot graphics[xmin=0, xmax=1, ymin=0, ymax=1] {coefficients_field3.png};
+\end{groupplot}
+\end{tikzpicture}
+\end{document}
