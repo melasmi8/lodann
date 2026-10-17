@@ -23,7 +23,7 @@ COLORMAPS = {"seq": SEQ, "div": DIV}
 # fixed colour and line style per method (identity never depends on the order of plotting)
 METHODS = {
     "fine FEM": dict(color="#0b0b0b", dash="solid", mark="none"),
-    "LODANN": dict(color="#2a78d6", dash="solid", mark="none"),
+    "DR-LOD": dict(color="#2a78d6", dash="solid", mark="none"),
     "LOD": dict(color="#eb6834", dash="dashed", mark="none"),
     "coarse FEM": dict(color="#1baf7a", dash="dotted", mark="none"),
     "frozen LOD": dict(color="#eda100", dash="dashdotted", mark="none"),

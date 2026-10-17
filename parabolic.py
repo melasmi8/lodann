@@ -1,5 +1,5 @@
 # Author: Mehdi Elasmi
-# Shared evaluation of the parabolic examples: LOD vs. LODANN (see examples/*/solve_parabolic.py)
+# Shared evaluation of the parabolic examples: LOD vs. DR-LOD (see examples/*/solve_parabolic.py)
 import timeit
 import numpy as np
 import matplotlib.pyplot as plt
@@ -29,13 +29,13 @@ def rel_error(u, u_ref):
 
 def method_name(loadPath):
     # name of the trained method in the outputs
-    return "LODANN"
+    return "DR-LOD"
 
 
 def run_case(loadPath, evalCoeff, T, rhs, u0, mass_fun=None, label="train", target=True, plotCoeff=True):
     """T: time points (None: equidistant in [0, 1]),
     u0: initial condition, either a vector on the fine mesh or a function of the fine vertices.
-    Solves the parabolic problem with the classical LOD and the LODANN basis functions, where
+    Solves the parabolic problem with the classical LOD and the DR-LOD basis functions, where
     the coefficient at time T[i] is the one of the parameter evalCoeff[i] (or the training
     parameters for evalCoeff="train_coeff"). With target=True, the basis functions that solve the
     discrete correction problems used in training are computed as well, which separates the
@@ -100,7 +100,7 @@ def run_case(loadPath, evalCoeff, T, rhs, u0, mass_fun=None, label="train", targ
     print(" - "+label+" error (all times): err = %.3f" % err, "%")
     print(" - "+label+" error at final time: err = %.3f" %
           rel_error(u_PINN[:, -1], u_LOD[:, -1]), "%")
-    # times [s]: LOD basis per coefficient (classical), LODANN basis per coefficient (networks
+    # times [s]: LOD basis per coefficient (classical), DR-LOD basis per coefficient (networks
     # and assembly, without loading the models), coarse time step (with a given basis)
     timings = dict(lod_basis=t_lod_basis/N_eval,
                    ann_basis=(t_ann["networks"]+t_ann["assembly"])/N_eval,
@@ -129,7 +129,7 @@ def run_case(loadPath, evalCoeff, T, rhs, u0, mass_fun=None, label="train", targ
 
 
 def plot_solutions(loadPath, res, label, first=0):
-    # quick looks: LOD, LODANN and their difference at the first, half, and final time
+    # quick looks: LOD, DR-LOD and their difference at the first, half, and final time
     FE, u_PINN, u_LOD, T = res["FE"], res["u_PINN"], res["u_LOD"], res["T"]
     N = np.shape(res["eval_coeff"])[0]
     for idx, name in [(first, "t=0"), (N//2, "t=halfTime"), (N-1, "t=last")]:

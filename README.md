@@ -1,10 +1,10 @@
-# LODANN: neural numerical homogenization based on Deep Ritz corrections
+# DR-LOD: neural numerical homogenization based on Deep Ritz corrections
 
 Code for the numerical examples of the paper
 
 > M. Elasmi, F. Krumbiegel, R. Maier: *Neural numerical homogenization based on Deep Ritz corrections*.
 
-LODANN approximates the corrections of the localized orthogonal decomposition (LOD) by neural
+DR-LOD approximates the corrections of the localized orthogonal decomposition (LOD) by neural
 networks that take the spatial coordinates and the parameters of the coefficient as input. One
 network is trained per coarse element by minimizing the energy of the local correction problems
 for a set of parameter samples (Deep Ritz approach, no precomputed corrections needed). The
@@ -35,7 +35,7 @@ bash run_paper_examples.sh train
 ```
 
 **Evaluation**: solves the time-dependent problems with fine FEM (reference), coarse FEM, LOD with a
-frozen basis, LOD, and LODANN (Example 2 also with a classical Deep Ritz network), and writes all
+frozen basis, LOD, and DR-LOD (Example 2 also with a classical Deep Ritz network), and writes all
 figures and tables:
 ```
 bash run_paper_examples.sh evaluate
@@ -69,7 +69,7 @@ python make_figures.py examples/damage_front
 ```
 Options of `make_figures.py`: `--baseline` (also the classical Deep Ritz network on the whole domain,
 trained in every time step), `--no-compile` (only write the LaTeX files), `--vector-fields` (fields as
-vector graphics). A quick evaluation without figures (errors of LODANN against LOD in the terminal):
+vector graphics). A quick evaluation without figures (errors of DR-LOD against LOD in the terminal):
 ```
 python examples/damage_front/solve_parabolic.py
 ```
@@ -137,7 +137,7 @@ The training progress can be followed with TensorBoard: `tensorboard --logdir ex
 | file | content |
 |---|---|
 | `training.py` | configuration (`DEFAULTS`) and training driver for all examples |
-| `LODANN.py` | network of one coarse element: localization, normalization, exact interpolation constraint, energy loss, Adam and L-BFGS |
+| `DR-LOD.py` | network of one coarse element: localization, normalization, exact interpolation constraint, energy loss, Adam and L-BFGS |
 | `DiscreteSetting.py`, `Geo.py` | fine and coarse meshes, patches, local system matrices and interpolation |
 | `LOD.py`, `util.py` | classical LOD correctors, finite element assembly and utilities |
 | `coefficients.py` | interface of the coefficients, rough random fields, loading of the coefficient of an example |
