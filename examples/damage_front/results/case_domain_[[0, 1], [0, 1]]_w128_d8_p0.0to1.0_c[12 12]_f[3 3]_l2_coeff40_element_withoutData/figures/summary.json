@@ -1,0 +1,75 @@
+{
+ "example": "damage_front",
+ "cases": {
+  "train": {
+   "error_final_vs_fineFEM": {
+    "coarse FEM": 0.12194682703665735,
+    "frozen LOD": 0.08474615633580233,
+    "LODANN": 0.009453129973481779,
+    "LOD": 0.009406737572775858,
+    "LODANN vs LOD": 0.0007185156042930777
+   },
+   "error_mean_vs_fineFEM": {
+    "coarse FEM": 0.09355052321199683,
+    "frozen LOD": 0.06071936407476407,
+    "LODANN": 0.010096779352584087,
+    "LOD": 0.010093615971335132,
+    "LODANN vs LOD": 0.00036235971052032333
+   },
+   "online_cost_per_step_s": {
+    "fine FEM": 0.0044609562043124475,
+    "coarse FEM": 0.0014208079232141757,
+    "LOD": 1.173278024902221,
+    "frozen LOD": 0.03455399871559049,
+    "LODANN": 0.15856713647267612
+   },
+   "basis_error_vs_LOD_percent": {
+    "LODANN": 0.15893612095577725
+   },
+   "timings": {
+    "lod_basis": 1.168690447928384,
+    "ann_basis": 0.15397955949883907,
+    "ann_load": 10.083834354009014,
+    "coarse_step": 0.00458757697383706
+   }
+  },
+  "test": {
+   "error_final_vs_fineFEM": {
+    "coarse FEM": 0.1219915386257291,
+    "frozen LOD": 0.08807165562946646,
+    "LODANN": 0.009689184560803362,
+    "LOD": 0.009662419771899257,
+    "LODANN vs LOD": 0.0006314599320827055
+   },
+   "error_mean_vs_fineFEM": {
+    "coarse FEM": 0.09000487210328706,
+    "frozen LOD": 0.058723427316633305,
+    "LODANN": 0.009833066273153343,
+    "LOD": 0.009834771556099279,
+    "LODANN vs LOD": 0.00035008552387197296
+   },
+   "online_cost_per_step_s": {
+    "fine FEM": 0.005046973793165914,
+    "coarse FEM": 0.0014270904163519542,
+    "LOD": 1.1622552661247512,
+    "frozen LOD": 0.052915329012903384,
+    "LODANN": 0.15729634335487694
+   },
+   "basis_error_vs_LOD_percent": {
+    "LODANN": 0.1534553888794791
+   },
+   "timings": {
+    "lod_basis": 1.1575721082906238,
+    "ann_basis": 0.15261318552074954,
+    "ann_load": 9.728349403012544,
+    "coarse_step": 0.00468315783412739
+   }
+  }
+ },
+ "offline_training_s": 20229.442328499994,
+ "offline_training_note": "recorded",
+ "training_error_network_78": {
+  "Adam": 0.010985599479283709,
+  "L-BFGS": 0.005041601801083763
+ }
+}

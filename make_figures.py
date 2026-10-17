@@ -53,6 +53,17 @@ def rel_error(u, ref):
     return np.linalg.norm(u[:, 1:]-ref[:, 1:], axis=0)/np.linalg.norm(ref[:, 1:], axis=0)
 
 
+def minimal_energy(FE, PDEcoeff, params, idx):
+    """Exact minimal energy of the training problem of the element (or node) idx, summed over the
+    outputs and the coefficients with the parameters params: sum of J(alpha*) = -1/2 r'alpha*, where
+    alpha* are the exact discrete corrections (Corollary 3.10 of the paper)."""
+    total = 0.
+    for c in params:
+        A = PDEcoeff(FE.Mids, [c]).flatten()
+        total += -0.5*np.sum(FE.patchRHS(A, idx)*FE.patchCorrector(A, idx))
+    return total
+
+
 def training_time(loadPath):
     # offline cost: recorded by training.py, otherwise estimated from the model files
     path = loadPath+"training_times.json"
@@ -150,9 +161,9 @@ def main(argv):
         cost = {"fine FEM": t_fem, "coarse FEM": t_coarse,
                 "LOD": tm["lod_basis"] + tm["coarse_step"],
                 "frozen LOD": tm["lod_basis"]/(N-1) + tm["coarse_step"],
-                "LOD-ANN": tm["ann_basis"] + tm["coarse_step"]}
+                "LODANN": tm["ann_basis"] + tm["coarse_step"]}
         sol = {"coarse FEM": res["u_coarse"], "frozen LOD": res["u_frozen"],
-               "LOD-ANN": res["u_PINN"], "LOD": res["u_LOD"]}
+               "LODANN": res["u_PINN"], "LOD": res["u_LOD"]}
         if "--baseline" in flags and lab == "test":
             # the baseline is expensive: computed once and stored in figures/deep_ritz_test.npz
             # (delete the file to recompute it)
@@ -169,9 +180,9 @@ def main(argv):
                 np.savez(cache, u=res["u_DR"], cost=cost["Deep Ritz"], T=T)
             sol["Deep Ritz"] = res["u_DR"]
         free = res["free"]
-        res["basis_error"] = {"LOD-ANN": float(np.mean(parabolic.rel_basis_error(res["G_PINN"], res["G_LOD"], free)))}
+        res["basis_error"] = {"LODANN": float(np.mean(parabolic.rel_basis_error(res["G_PINN"], res["G_LOD"], free)))}
         res["errors"] = {m: rel_error(u, res["u_FEM"]) for m, u in sol.items()}
-        res["errors"]["LOD-ANN vs LOD"] = rel_error(res["u_PINN"], res["u_LOD"])
+        res["errors"]["LODANN vs LOD"] = rel_error(res["u_PINN"], res["u_LOD"])
         res["cost"] = cost
         R[lab] = res
         summary["cases"][lab] = {
@@ -205,26 +216,43 @@ def main(argv):
     logs = read_logs(loadPath, idx)
     if "energy's loss" in logs:
         e = logs["energy's loss"]
-        lines = [F.series(e[:, 0], e[:, 1], label="Adam", color=F.METHODS["LOD-ANN"]["color"])]
+        lines = [F.series(e[:, 0], e[:, 1], label="Adam", color=F.METHODS["LODANN"]["color"])]
         if "L-BFGS energy's loss" in logs:
             l = logs["L-BFGS energy's loss"]
             lines.append(F.series(l[:, 0], l[:, 1], label="L-BFGS", color=F.METHODS["LOD"]["color"], dash="dashed"))
-        allE = np.concatenate([s["y"] for s in lines])
-        gap = []
+        # relative error of the network corrections in the energy norm over the iterations, from the
+        # loss and the exact minimal energy L* (Corollary 3.10 of the paper):
+        # ((L - L*)/|L*|)^(1/2) = (sum ||P beta - alpha*||_S^2 / sum ||alpha*||_S^2)^(1/2).
+        # Adam: all training coefficients (mini-batch losses are scaled to the full sum),
+        # L-BFGS: the fixed subset of the coefficients used by the fine tuning
+        PDEcoeff = test["PDEcoeff"]
+        n_par = getattr(PDEcoeff, "n_par", 1)
+        train = np.loadtxt(loadPath+"trainParameter_Iter0.txt")
+        train = np.reshape(train, (-1, n_par)) if n_par > 1 else np.ravel(train)
+        N = np.shape(train)[0]
+        sub = np.arange(N)
+        if 0 < config.get("lbfgs_coeffs", 0) < N:
+            sub = np.sort(np.random.default_rng(idx).choice(N, config["lbfgs_coeffs"], replace=False))
+        L_star = {"Adam": minimal_energy(FE, PDEcoeff, train, idx)}
+        L_star["L-BFGS"] = L_star["Adam"] if np.size(sub) == N else minimal_energy(FE, PDEcoeff, train[sub], idx)
+        err = []
         for s in lines:
-            g = (s["y"]-allE.min())/abs(allE.min())
-            keep = g > 1E-12  # the minimum itself has no gap
-            gap.append(F.series(s["x"][keep]+1, g[keep], label=s["label"], color=s["color"], dash=s["dash"]))
-        panels = [F.line_panel(lines, "energy (network %d)" % idx, "iteration", "$\\mathcal{L}_{\\mathrm{energy}}$"),
-                  F.line_panel(gap, "decrease of the energy", "iteration",
-                               "$(\\mathcal{L}-\\mathcal{L}_{\\min})/|\\mathcal{L}_{\\min}|$", ymode="log", xmode="log",
+            g = (s["y"]-L_star[s["label"]])/abs(L_star[s["label"]])
+            keep = g > 0
+            err.append(F.series(s["x"][keep]+1, np.sqrt(g[keep]), label=s["label"], color=s["color"], dash=s["dash"]))
+        summary["training_error_network_%d" % idx] = {s["label"]: float(s["y"][-1]) for s in err}
+        energy = [F.series(s["x"]+1, s["y"], label=s["label"], color=s["color"], dash=s["dash"]) for s in lines]
+        panels = [F.line_panel(energy, "energy (network %d)" % idx, "iteration", "$\\mathcal{L}_{\\mathrm{energy}}$",
+                               xmode="log"),
+                  F.line_panel(err, "relative error of the corrections", "iteration",
+                               "$((\\mathcal{L}-\\mathcal{L}^\\star)/|\\mathcal{L}^\\star|)^{1/2}$", ymode="log", xmode="log",
                                legend=False)]
         if "interpolation condition" in logs and not config["exact_constraint"]:
             ic = logs["interpolation condition"]
             panels.append(F.line_panel([F.series(ic[:, 0]+1, ic[:, 1], label="Adam")], "interpolation condition",
                                        "iteration", "$\\mathcal{L}_{\\mathrm{interp}}$", ymode="log", xmode="log", legend=False))
         F.save_tex(out+"loss", panels, **save)
-        entries.append(("loss", "Training of the network %d: energy loss and its relative decrease" % idx))
+        entries.append(("loss", "Training of the network %d: energy loss and relative error of the network corrections in the energy norm (Corollary 3.10)" % idx))
 
     # ---- coefficients (cf. Fig. 9)
     first = R[cases[0]]
@@ -246,19 +274,19 @@ def main(argv):
         vmin, vmax = min(ZL.min(), ZA.min()), max(ZL.max(), ZA.max())
         node = FE.vertices_coarse[j]
         rows[0].append(F.field_panel(ZL, "LOD, node %d" % j, vmin=vmin, vmax=vmax, extent=ext, marker=tuple(node)))
-        rows[1].append(F.field_panel(ZA, "LOD-ANN, node %d" % j, vmin=vmin, vmax=vmax, extent=ext, marker=tuple(node)))
-        rows[2].append(F.field_panel(ZA-ZL, "LOD-ANN $-$ LOD", cmap="div", extent=ext))
+        rows[1].append(F.field_panel(ZA, "LODANN, node %d" % j, vmin=vmin, vmax=vmax, extent=ext, marker=tuple(node)))
+        rows[2].append(F.field_panel(ZA-ZL, "LODANN $-$ LOD", cmap="div", extent=ext))
         # cross section through the node
         r = np.argmin(np.abs(ys-node[1]))
         x = xs[i0:i1+1]
         hat = np.hstack(FE.basisFunctions())[:, j]
         sec = lambda v: F.grid_field(v, FE)[r, i0:i1+1]
         cross.append(F.line_panel([F.series(x, sec(hat), "nodal basis", label="$\\Lambda_j$"),
-                                   F.series(x, sec(A), "LOD-ANN"), F.series(x, sec(L), "LOD")],
+                                   F.series(x, sec(A), "LODANN"), F.series(x, sec(L), "LOD")],
                                   "node %d, $y=%.3g$" % (j, node[1]), "$x$", "", legend=(len(cross) == 0),
                                   legend_pos="below"))
     F.save_tex(out+"basis_functions", rows[0]+rows[1]+rows[2], ncols=len(nodes), **save)
-    entries.append(("basis_functions", "Corrected basis functions of LOD and LOD-ANN and their difference (%s coefficient %d)" % (cases[-1], i)))
+    entries.append(("basis_functions", "Corrected basis functions of LOD and LODANN and their difference (%s coefficient %d)" % (cases[-1], i)))
     F.save_tex(out+"basis_cross_sections", cross, ncols=len(nodes), **save)
     entries.append(("basis_cross_sections", "Cross sections of the basis functions through the node"))
 
@@ -272,9 +300,9 @@ def main(argv):
         rows[0].append(coef_panel(coef(test, k), "coefficient, "+tl(k)))
         rows[1].append(F.field_panel(Uh, "fine FEM, "+tl(k), vmin=vmin, vmax=vmax, cbar_label="$u$"))
         rows[2].append(F.field_panel(UL, "LOD, "+tl(k), vmin=vmin, vmax=vmax, cbar_label="$u$"))
-        rows[3].append(F.field_panel(UA, "LOD-ANN, "+tl(k), vmin=vmin, vmax=vmax, cbar_label="$u$"))
+        rows[3].append(F.field_panel(UA, "LODANN, "+tl(k), vmin=vmin, vmax=vmax, cbar_label="$u$"))
     F.save_tex(out+"solutions", sum(rows, []), ncols=3, **save)
-    entries.append(("solutions", "Coefficient, fine FEM (reference), LOD and LOD-ANN solution (%s set)"
+    entries.append(("solutions", "Coefficient, fine FEM (reference), LOD and LODANN solution (%s set)"
                     % cases[-1]))
 
     # ---- cross sections of the solutions (cf. Fig. 7), all methods
@@ -284,7 +312,7 @@ def main(argv):
         sec = lambda u: F.grid_field(u[:, k], FE)[r, :]
         ser = [F.series(xs, sec(test["u_FEM"]), "fine FEM")]
         for m, key in [("coarse FEM", "u_coarse"), ("frozen LOD", "u_frozen"), ("Deep Ritz", "u_DR"),
-                       ("LOD-ANN", "u_PINN"), ("LOD", "u_LOD")]:
+                       ("LODANN", "u_PINN"), ("LOD", "u_LOD")]:
             if key in test:
                 ser.append(F.series(xs, sec(test[key]), m))
         panels.append(F.line_panel(ser, tl(k)+", $y=%.3g$" % ys[r], "$x$", "$u$", legend=(n == 0),
@@ -300,10 +328,10 @@ def main(argv):
     for k in times:
         m = max(E[k][0].max(), E[k][1].max())
         rows[0].append(F.field_panel(E[k][0], "$|u_{\\mathrm{LOD}}-u_h|$, "+tl(k), vmin=0, vmax=m))
-        rows[1].append(F.field_panel(E[k][1], "$|u_{\\mathrm{LOD\\text{-}ANN}}-u_h|$, "+tl(k), vmin=0, vmax=m))
-        rows[2].append(F.field_panel(E[k][2], "$|u_{\\mathrm{LOD\\text{-}ANN}}-u_{\\mathrm{LOD}}|$, "+tl(k), vmin=0))
+        rows[1].append(F.field_panel(E[k][1], "$|u_{\\mathrm{LODANN}}-u_h|$, "+tl(k), vmin=0, vmax=m))
+        rows[2].append(F.field_panel(E[k][2], "$|u_{\\mathrm{LODANN}}-u_{\\mathrm{LOD}}|$, "+tl(k), vmin=0))
     F.save_tex(out+"pointwise_errors", rows[0]+rows[1]+rows[2], ncols=3, **save)
-    entries.append(("pointwise_errors", "Pointwise errors against the fine FEM solution $u_h$ and between LOD-ANN and LOD (%s set)" % cases[-1]))
+    entries.append(("pointwise_errors", "Pointwise errors against the fine FEM solution $u_h$ and between LODANN and LOD (%s set)" % cases[-1]))
 
     # ---- comparison: errors over time
     panels = []
@@ -328,7 +356,7 @@ def main(argv):
         pts, "%s set, final time" % cases[-1], "online cost per time step [s]",
         "relative error vs.\\ fine FEM [\\%]", xmode="log", ymode="log", legend=False,
         labels_at_points=True)], width_cm=7.0, **save)
-    entries.append(("accuracy_cost", "Accuracy against online cost per time step (%s set). Fine FEM (reference): %.3g s per step; LOD-ANN offline training: %.3g h (%s). The classical LOD timings refer to the unoptimized implementation in LOD.py." % (
+    entries.append(("accuracy_cost", "Accuracy against online cost per time step (%s set). Fine FEM (reference): %.3g s per step; LODANN offline training: %.3g h (%s). The classical LOD timings refer to the unoptimized implementation in LOD.py." % (
         cases[-1], test["cost"]["fine FEM"], t_train/3600, how)))
 
     # ---- classical Deep Ritz baseline
@@ -341,13 +369,13 @@ def main(argv):
         F.save_tex(out+"deep_ritz", [
             F.field_panel(Uh, "fine FEM, "+tl(k), vmin=vmin, vmax=vmax, cbar_label="$u$"),
             F.field_panel(UD, "Deep Ritz (no LOD), "+tl(k), vmin=vmin, vmax=vmax, cbar_label="$u$"),
-            F.field_panel(UA, "LOD-ANN, "+tl(k), vmin=vmin, vmax=vmax, cbar_label="$u$"),
+            F.field_panel(UA, "LODANN, "+tl(k), vmin=vmin, vmax=vmax, cbar_label="$u$"),
             F.field_panel(e1, "$|u_{\\mathrm{DR}}-u_h|$", vmin=0, vmax=m),
-            F.field_panel(e2, "$|u_{\\mathrm{LOD\\text{-}ANN}}-u_h|$", vmin=0, vmax=m)], ncols=3, **save)
-        entries.append(("deep_ritz", "Classical Deep Ritz network on the whole domain (trained in every time step) compared with LOD-ANN and the fine FEM solution"))
+            F.field_panel(e2, "$|u_{\\mathrm{LODANN}}-u_h|$", vmin=0, vmax=m)], ncols=3, **save)
+        entries.append(("deep_ritz", "Classical Deep Ritz network on the whole domain (trained in every time step) compared with LODANN and the fine FEM solution"))
 
     # ---- summary
-    methods = [m for m in ["coarse FEM", "frozen LOD", "LOD", "LOD-ANN", "Deep Ritz"] if m in test["errors"]]
+    methods = [m for m in ["coarse FEM", "frozen LOD", "LOD", "LODANN", "Deep Ritz"] if m in test["errors"]]
     with open(out+"summary.json", "w") as f:
         json.dump(summary, f, indent=1, default=float)
     lines = [r"\begin{tabular}{l" + "r"*(2*len(cases)+1) + "}", r"\hline",
@@ -360,7 +388,7 @@ def main(argv):
         lines.append(m + " & " + " & ".join(vals) + " & %.3g\\\\" % test["cost"].get(m, np.nan))
     lines += [r"\hline", "fine FEM (reference) & " + " & ".join(["--"]*2*len(cases)) + " & %.3g\\\\" % test["cost"]["fine FEM"],
               r"\hline"]
-    for m in ["LOD-ANN"]:
+    for m in ["LODANN"]:
         if m in test["basis_error"]:
             # mean relative error of the basis functions against LOD (in the "final" column)
             vals = []

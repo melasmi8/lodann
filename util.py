@@ -1,4 +1,5 @@
 # Authors: Mehdi Elasmi, Felix Krumbiegel
+import os
 import numpy as np
 import scipy.sparse as spp
 import tensorflow as tf
@@ -529,8 +530,8 @@ def loadModel(loadPath, index):
 
     # # # Load the model with custom_objects parameter
     # model = tf.keras.models.load_model(loadPath+"correctedHatModel"+str(index)+".h5", custom_objects=custom_objects)
-    sa_weights = np.loadtxt(loadPath+"sa_weights_" +
-                            str(index)+".txt", dtype=np.float32)
-    sa_weightsData = np.loadtxt(
-        loadPath+"sa_weightsData_"+str(index)+".txt", dtype=np.float32)
+    # self-adaptive weights of the penalty formulation (not needed with the exact constraint)
+    files = [loadPath+name+str(index)+".txt" for name in ["sa_weights_", "sa_weightsData_"]]
+    sa_weights, sa_weightsData = [np.loadtxt(f, dtype=np.float32) if os.path.exists(f) else None
+                                  for f in files]
     return model, sa_weights, sa_weightsData
